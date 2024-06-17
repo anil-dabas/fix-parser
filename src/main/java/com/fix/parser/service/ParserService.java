@@ -10,19 +10,32 @@ public class ParserService {
         FixMessage fixMessage = new FixMessage();
         int start = 0;
         int length = msg.length;
-        for (int i = 0; i < length; i++) {
-            if (msg[i] == '=') {
-                String tag = new String(msg, start, i - start);
-                start = i + 1;
-                while (i < length && msg[i] != '\u0001') {
-                    i++;
+
+        while (start < length) {
+            int equalsIndex = -1;
+            int sohIndex = -1;
+
+            // Find '=' and SOH within the segment
+            for (int i = start; i < length; i++) {
+                if (msg[i] == '=') {
+                    equalsIndex = i;
+                } else if (msg[i] == '\u0001') {
+                    sohIndex = i;
+                    break;
                 }
-                String value = new String(msg, start, i - start);
+            }
+
+            // If both '=' and SOH are found in the correct order, parse the field
+            if (equalsIndex != -1 && sohIndex != -1 && equalsIndex < sohIndex) {
+                String tag = new String(msg, start, equalsIndex - start);
+                String value = new String(msg, equalsIndex + 1, sohIndex - equalsIndex - 1);
                 fixMessage.addField(tag, value);
-                start = i + 1;
+                start = sohIndex + 1; // Move to the next field
+            } else {
+                break; // Invalid segment, exit parsing
             }
         }
+
         return fixMessage;
     }
-
 }
